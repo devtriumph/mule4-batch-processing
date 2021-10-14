@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+    xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+    xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+    <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="aff68adb-36f9-4475-b226-4aac98d4aa2c" >
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <flow name="mule4-batch-process-flow" doc:id="d106450a-474e-4605-be3a-7016bb2f8743">
+        <http:listener doc:name="Listener" doc:id="f0d2896e-5e14-478c-bc0f-faff29c59c4b" config-ref="HTTP_Listener_config"
+            path="/batch"/>
+        <ee:transform doc:name="Transform Message" doc:id="b80381d4-f8c9-441f-97cf-342c5515fe38">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+1 to 9]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <batch:job jobName="mule4-batch-processBatch_Job" doc:id="b29af0e0-742f-457e-9a94-3deef43fc3cc" blockSize="3" maxFailedRecords="-1">
+            <batch:process-records>
+                <batch:step name="Batch_Step_1" doc:id="210a61d0-c5ac-449f-94bc-774ff070c25c" acceptExpression="payload &lt; 4">
+                    <logger level="INFO" doc:name="Logger" doc:id="d6113d82-25c9-4846-9465-d710e72cd60f" message='#["Batch_Step_1: " ++ payload as String]'/>
+                </batch:step>
+                <batch:step name="Batch_Step_2" doc:id="bb84d55e-c433-4ddb-9538-c9e7480a952e" >
+                    <logger level="INFO" doc:name="Logger" doc:id="009c8265-e59e-4888-9513-0bf21a5c5055" message='#["Batch_Step_2: " ++ payload as String]'/>
+                    <ee:transform doc:name="Transform Message" doc:id="93538999-3ffa-42ba-8d39-620739a06341">
+                        <ee:message>
+                            <ee:set-payload><![CDATA[%dw 2.0
+import * from dw::Runtime
+output application/java
+---
+if (payload == 4) fail('Custom Error') else payload]]></ee:set-payload>
+                        </ee:message>
+                    </ee:transform>
+                </batch:step>
+                <batch:step name="Batch_Step_3" doc:id="5220ceaa-d58b-49fb-9a2b-9499d2819b02" acceptPolicy="ONLY_FAILURES">
+                    <logger level="INFO" doc:name="Logger" doc:id="3a5d4b3e-1d62-41d3-841c-5101487f62e7" message='#["Batch_Step_3: " ++ payload as String]' />
+                </batch:step>
+                <batch:step name="Batch_Step_4" doc:id="91003315-8a75-439e-b554-34761fbe92e5" acceptPolicy="ALL">
+                    <logger level="INFO" doc:name="Logger" doc:id="184d68fc-bef1-4e84-98c4-92ac8ba3653f" message='#["Batch_Step_4: " ++ payload as String]'/>
+                </batch:step>
+            </batch:process-records>
+            <batch:on-complete >
+                <ee:transform doc:name="Transform Message" doc:id="bdc978b8-78db-49d0-9877-6f328b4b3bd6" >
+                    <ee:message >
+                        <ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+                <logger level="INFO" doc:name="Logger" doc:id="d342063f-3955-45fe-a708-6a57dc2bd29e" message="#[payload]"/>
+            </batch:on-complete>
+        </batch:job>
+        <ee:transform doc:name="Transform Message" doc:id="e93b30dc-c107-43f0-8d71-ab88e660e4cc" >
+            <ee:message >
+                <ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Success"]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>
